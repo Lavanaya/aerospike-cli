@@ -1,0 +1,19 @@
+{
+  "name": "aql-cli",
+  "version": "1.0.0",
+  "description": "command line interface for aerospike database using node js",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "lavanyaDixit <lavadixit05@gmail.com>",
+  "license": "ISC",
+  "preferGlobal": true,
+  "dependencies": {
+    "aerospike": "^3.0.1",
+    "commander": "^2.9.0"
+  },
+  "bin": {
+    "aql-cli": "index.js"
+  }
+}

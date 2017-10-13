@@ -33,6 +33,10 @@ commander
   .option('-n, --namespace <namespace>', 'namespace in aql')
   .option('--set <set>', 'Set name in aql')
   .option('--port <port>', 'listen on specified port')
+  .option('--bins <bins>','pass bin values to insert in db')
+  .option('-A, --append <append>','append record in existing record by key')
+  .option('-I, --increment <increment>', 'increment bin value')
+  .option('-R, --read <read>','read bin values using key')
 .parse(process.argv);
 
 
@@ -43,19 +47,13 @@ case 'ls':        return ls();
 case 'start':     return start();
 case 'stop':      return stop(process.argv[3], process.argv[4] == '--log');
 case 'log':       return log(process.argv[3], process.argv.splice(4).join(''));
-case 'running':   return running();
-case 'resolve':   return resolve(process.argv[3]);
-case 'reopen':    return reopen(process.argv[3]);
+case 'put':       return put(process.argv[3],process.argv[4],process.argv[5]);
 case 'close':     return close(process.argv[3]);
 case 'needinfo':  return needInfo(process.argv[3]);
 case 'get':       return get(process.argv[3],process.argv[4],process.argv[5]);
-case 'describe':  return describe(process.argv[3]);
-case 'comments':  return comments(process.argv[3], process.argv[4] == '--reverse');
-case 'subtasks':  return subtasks(process.argv[3]);
-case 'comment':   return comment(process.argv[3], process.argv.slice(4));
 case 'user':      return user(process.argv.slice(3));
-case 'assign':    return assign(process.argv[3], process.argv.slice(4));
 case 'status':    return setStatus(process.argv[3], process.argv[4]);
+case 'alter':     return alter(process.argv[3],process.argv[4],process.argv[5]);  
 }
 
 function getConfig(){
@@ -75,7 +73,7 @@ function start(){
     } else {
      // handle success
      console.log('Connecting to aerospike....Connection to Aerospike cluster succeeded!');
-     return client;
+    
     }
     }   
   );
@@ -92,10 +90,10 @@ function stop(){
     }
       else
       console.log("Aql client not connected...");
-  }
+}
   
 
-
+//functionn to connect to aerospike and get values for given primary key
   function get(pk,namespace,set){
    let client = start();
    //console.log(client);
@@ -107,11 +105,69 @@ function stop(){
         if(err)
       {console.log('Either reocrd not found or error occured while reading record \n'+ err);}
     });
-
-
   }
 
-console.log(commander.port);
+
+//will delete all values before inserting new value if key is already present
+function put(pk,namespace,set){
+  let client = start();
+  //console.log(client);
+   let key  = new Aerospike.Key(pk, namespace, set);
+   let bins = JSON.parse(commander.bins);
+   if(bins)
+      console.log('print %j',bins);
+   client.put(key, bins, meta, policy).then(record=>
+     {
+       console.log("printing record bins:  %j",record.bins);})
+     .catch(function(err) {
+       if(err)
+     {console.log('Error occured while writing record to db. See stack trace below. \n'+ err);}
+   });
+ }
+
+ function alter(pk,namespace,set){
+ 
+  let ops = [];
+  //append only string values allowed
+   if(commander.append) {
+     let appendObject = JSON.parse(commander.append);
+     console.log(appendObject);
+     for(var key in appendObject){
+        ops.push(Aerospike.operations.append(key,appendObject[key]));
+    }}
+
+    if(commander.read) {
+      let readObject = JSON.parse(commander.read);
+      console.log('reading object',readObject);
+      for(var key in readObject){
+        console.log('key:',key);
+         ops.push(Aerospike.operations.read(key));
+     }}
+     
+    if(commander.increment) {
+      let incrObject = JSON.parse(commander.increment);
+      Object.keys(incrObject)
+      .forEach(function eachKey(key) { 
+        console.log("key: "+key);
+        ops.push(Aerospike.operations.incr(key,incrObject[key]));
+      });
+    }
+     console.log("performing following operations:\n%j",ops);
+     client = start();
+     key = new Aerospike.Key(pk, namespace, set);
+     client.operate(key, ops, function (error, record) {
+      if (error) {
+      console.log("error in operate"+error);
+   } else {
+     console.log('Alter operation successfull %j');
+     if(commander.read){
+       console.log('%j',record.bins);
+     } 
+    }
+   });
+
+   }
+ 
 
 if(commander.host && commander.port){
   config.hosts[0].addr=commander.host;
@@ -163,12 +219,12 @@ let ops = [
   Aerospike.lists.append('l', 'z'),
 //  Aerospike.maps.removeByKey('m', 'bar')
 ];
-
+console.log('ops: %j',ops);
 client.operate(key2, ops, function (error, record) {
        if (error) {
        console.log("error in operate"+error);
     } else {
-      console.log('b', record.bins) // value of 'b' returned by the `read` operation
+      console.log('\n\n\nreading b value', record.bins) // value of 'b' returned by the `read` operation
      }
     });
 

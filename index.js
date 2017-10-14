@@ -2,6 +2,7 @@
 const fs              = require('fs');
 const Aerospike       = require('aerospike')
 const commander       = require('commander');
+var chalk             = require('chalk');
 
 let config = {
   hosts: [ { addr: '172.28.128.3', port: 3000 } ],
@@ -72,8 +73,7 @@ function start(){
      console.log('Connection to Aerospike cluster failed!');
     } else {
      // handle success
-     console.log('Connecting to aerospike....Connection to Aerospike cluster succeeded!');
-    
+     console.log(chalk.red('Connecting to aerospike....Connection to Aerospike cluster succeeded!'));   
     }
     }   
   );
@@ -103,7 +103,7 @@ function stop(){
         console.log("printing record bins:  %j",record.bins);})
       .catch(function(err) {
         if(err)
-      {console.log('Either reocrd not found or error occured while reading record \n'+ err);}
+      {console.log(chalk.red('Either reocrd not found or error occured while reading record \n'+ err));}
     });
   }
 
@@ -121,7 +121,8 @@ function put(pk,namespace,set){
        console.log("printing record bins:  %j",record.bins);})
      .catch(function(err) {
        if(err)
-     {console.log('Error occured while writing record to db. See stack trace below. \n'+ err);}
+     {console.log(chalk.red('Error occured while writing record to db. See stack trace below. \n'+ err));
+    }
    });
  }
 
@@ -157,7 +158,7 @@ function put(pk,namespace,set){
      key = new Aerospike.Key(pk, namespace, set);
      client.operate(key, ops, function (error, record) {
       if (error) {
-      console.log("error in operate"+error);
+      console.log(chalk.red('ERROR occured:\n '+error));
    } else {
      console.log('Alter operation successfull %j');
      if(commander.read){

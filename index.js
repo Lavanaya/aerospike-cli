@@ -100,7 +100,7 @@ function stop(){
     let key = new Aerospike.Key(pk, namespace, set);
     client.get(key).then(record=>
       {
-        console.log("printing record bins:  %j",record.bins);})
+        console.log("printing record bins:\n",JSON.stringify(record.bins, null, 4))})
       .catch(function(err) {
         if(err)
       {console.log(chalk.red('Either reocrd not found or error occured while reading record \n'+ err));}
@@ -132,16 +132,16 @@ function put(pk,namespace,set){
   //append only string values allowed
    if(commander.append) {
      let appendObject = JSON.parse(commander.append);
-     console.log(appendObject);
+    // console.log(appendObject);
      for(var key in appendObject){
         ops.push(Aerospike.operations.append(key,appendObject[key]));
     }}
 
     if(commander.read) {
       let readObject = JSON.parse(commander.read);
-      console.log('reading object',readObject);
+      console.log('Reading Object: ',readObject);
       for(var key in readObject){
-        console.log('key:',key);
+     //   console.log('key:',key);
          ops.push(Aerospike.operations.read(key));
      }}
      
@@ -149,24 +149,25 @@ function put(pk,namespace,set){
       let incrObject = JSON.parse(commander.increment);
       Object.keys(incrObject)
       .forEach(function eachKey(key) { 
-        console.log("key: "+key);
+       // console.log("key: "+key);
         ops.push(Aerospike.operations.incr(key,incrObject[key]));
       });
     }
-     console.log("performing following operations:\n%j",ops);
+     console.log("performing following operations:\n",JSON.stringify(ops, null, 4));
      client = start();
      key = new Aerospike.Key(pk, namespace, set);
      client.operate(key, ops, function (error, record) {
       if (error) {
       console.log(chalk.red('ERROR occured:\n '+error));
    } else {
-     console.log('Alter operation successfull %j');
+     console.log('Alter operation successfull ');
      if(commander.read){
-       console.log('%j',record.bins);
+      // console.log('%j',record.bins);
+       console.log(JSON.stringify(record.bins, null, 4));
+       console.log(chalk.red("Press Ctrl+C to come out of function........."));
      } 
     }
    });
-
    }
  
 

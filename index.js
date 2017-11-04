@@ -3,6 +3,7 @@ const fs              = require('fs');
 const Aerospike       = require('aerospike')
 const commander       = require('commander');
 var chalk             = require('chalk');
+require('console.table');
 
 let config = {
   hosts: [ { addr: '172.28.128.3', port: 3000 } ],
@@ -18,6 +19,7 @@ let config = {
     write: { totalTimeout: 1000 } }
 }
 
+let client=null;
 let meta = { ttl: 10000 }
 let policy = new Aerospike.WritePolicy({
   exists: Aerospike.policy.exists.CREATE_OR_REPLACE
@@ -38,6 +40,7 @@ commander
   .option('-A, --append <append>','append record in existing record by key')
   .option('-I, --increment <increment>', 'increment bin value')
   .option('-R, --read <read>','read bin values using key')
+  .option('--table','get output in table format')
 .parse(process.argv);
 
 
@@ -58,14 +61,17 @@ case 'alter':     return alter(process.argv[3],process.argv[4],process.argv[5]);
 }
 
 function getConfig(){
-  return config;
+  console.log(JSON.stringify(config,null,4));
+  return ;
 }
 
-var client=null;
+if(commander.host && commander.port){
+  config.hosts[0].addr=commander.host;
+  config.hosts[0].port=3000;
+}
 
 function start(){
  let client=Aerospike.client(config);
-  //client.connect();
  client.connect(function (error) {
     if (error) {
      // handle failure
@@ -73,57 +79,63 @@ function start(){
      console.log('Connection to Aerospike cluster failed!');
     } else {
      // handle success
-     console.log(chalk.red('Connecting to aerospike....Connection to Aerospike cluster succeeded!'));   
+     console.log(chalk.green('Connecting to aerospike....Connection to Aerospike cluster succeeded!'));   
     }
     }   
   );
  return client;
 }
 
-
+//disconnect aerospike if already connected
 function stop(){
-  let client = start();
-  console.log(client.config);
-    if(client.connected){
+  if(client!=null &&  client.connected){
       client.close();
-      console.log("Aql client disconnected....");
-    }
-      else
-      console.log("Aql client not connected...");
+  console.log("Aql client disconnected....");
+  }
+  else
+    console.log("Aql client not connected...");
+    return;
 }
   
-
 //functionn to connect to aerospike and get values for given primary key
-  function get(pk,namespace,set){
-   let client = start();
-   //console.log(client);
-    let key = new Aerospike.Key(pk, namespace, set);
-    client.get(key).then(record=>
-      {
-        console.log("printing record bins:\n",JSON.stringify(record.bins, null, 4))})
-      .catch(function(err) {
-        if(err)
-      {console.log(chalk.red('Either reocrd not found or error occured while reading record \n'+ err));}
-    });
+function get(pk,namespace,set){
+  let client = start();
+  let key = new Aerospike.Key(pk, namespace, set);
+  client.get(key).then(record=>
+    {
+      if(commander.table)
+          console.table(record.bins);
+      else
+          console.log("printing record bins:\n",JSON.stringify(record.bins, null, 4));   
+    }).catch(function(err) {
+        if(err){
+          console.log(chalk.red('Either reocrd not found or error occured while reading record \n'+ err));
+        }
+      });
+      stop();
+    return;
   }
 
 
 //will delete all values before inserting new value if key is already present
 function put(pk,namespace,set){
   let client = start();
-  //console.log(client);
    let key  = new Aerospike.Key(pk, namespace, set);
    let bins = JSON.parse(commander.bins);
    if(bins)
       console.log('print %j',bins);
    client.put(key, bins, meta, policy).then(record=>
      {
-       console.log("printing record bins:  %j",record.bins);})
+       if(commander.table)
+          console.table(record);
+        else
+          console.log("printing record bins:  %j",record);
+      })
      .catch(function(err) {
-       if(err)
-     {console.log(chalk.red('Error occured while writing record to db. See stack trace below. \n'+ err));
-    }
-   });
+       if(err){
+         console.log(chalk.red('Error occured while writing record to db. See stack trace below. \n'+ err));
+        }
+      });
  }
 
  function alter(pk,namespace,set){
@@ -132,7 +144,6 @@ function put(pk,namespace,set){
   //append only string values allowed
    if(commander.append) {
      let appendObject = JSON.parse(commander.append);
-    // console.log(appendObject);
      for(var key in appendObject){
         ops.push(Aerospike.operations.append(key,appendObject[key]));
     }}
@@ -141,7 +152,6 @@ function put(pk,namespace,set){
       let readObject = JSON.parse(commander.read);
       console.log('Reading Object: ',readObject);
       for(var key in readObject){
-     //   console.log('key:',key);
          ops.push(Aerospike.operations.read(key));
      }}
      
@@ -149,7 +159,6 @@ function put(pk,namespace,set){
       let incrObject = JSON.parse(commander.increment);
       Object.keys(incrObject)
       .forEach(function eachKey(key) { 
-       // console.log("key: "+key);
         ops.push(Aerospike.operations.incr(key,incrObject[key]));
       });
     }
@@ -162,19 +171,19 @@ function put(pk,namespace,set){
    } else {
      console.log('Alter operation successfull ');
      if(commander.read){
-      // console.log('%j',record.bins);
-       console.log(JSON.stringify(record.bins, null, 4));
+        if(commander.table)
+          console.table(record.bins);
+        else
+          console.log(JSON.stringify(record.bins, null, 4));
        console.log(chalk.red("Press Ctrl+C to come out of function........."));
      } 
     }
    });
+   return;
    }
  
 
-if(commander.host && commander.port){
-  config.hosts[0].addr=commander.host;
-  config.hosts[0].port=3000;
-}
+/*
  client=Aerospike.client(config);
 console.log(client);
 client.connect();
@@ -211,7 +220,7 @@ client.get(key).then(record=>
   //client.close()
   return Promise.reject(error)
 });  */
-
+/*
 let key2 = new Aerospike.Key('test','testset', 'xy2');
 let bins={z:'abcd'};
 let ops = [

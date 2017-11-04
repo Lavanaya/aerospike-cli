@@ -26,6 +26,10 @@ To install openssl library via apt-get:
 
 ## Usage:
 
+* To see this list of commands:
+
+    $ aql-cli  --help
+
 * To connect to a remote aerospike database:
     
     $ mongo-express start -H <aqlDBHost> -P <aqlDBPort>

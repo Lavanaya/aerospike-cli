@@ -12,7 +12,8 @@
   "dependencies": {
     "aerospike": "^3.0.1",
     "chalk": "^2.1.0",
-    "commander": "^2.9.0"
+    "commander": "^2.9.0",
+    "console.table": "^0.9.1"
   },
   "bin": {
     "aql-cli": "index.js"
